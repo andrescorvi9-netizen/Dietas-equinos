@@ -1,354 +1,280 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package GUI;
 
 import Logica.Gestion_cabalo;
-import Persistencia.ConexionBD;
-import java.sql.Connection;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-/**
- *
- * @author carvi
- */
-public class Pantalla extends javax.swing.JFrame {
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableModel; 
+import java.awt.*;
+import java.sql.*;
 
-    /**
-     * Creates new form Pantalla
-     */
-private final Connection conexion; 
+public class Pantalla extends JFrame {
 
-    public Pantalla() {
-        initComponents();
-        this.setLocationRelativeTo(null);
-        conexion = ConexionBD.getConexion(); // Establecer conexión al inicio
-        if (conexion == null) {
-            JOptionPane.showMessageDialog(this, "Error: No se pudo conectar a la base de datos.", "Error de conexión", JOptionPane.ERROR_MESSAGE);
-            // Puedes decidir si cerrar la aplicación aquí o continuar sin conexión
+    // Colores basados en la maqueta de Login (Tierra/Oliva)
+    private static final Color COLOR_FONDO = new Color(205, 133, 63); // Marrón claro/Tan
+    private static final Color COLOR_PANEL = new Color(102, 51, 0); // Marrón oscuro/Saddle Brown
+    private static final Color COLOR_BOTON = new Color(50, 100, 50); // Verde oliva oscuro
+    private static final Color COLOR_TEXTO = Color.WHITE;
+    private static final Font FONT_TITULO = new Font("SansSerif", Font.BOLD, 18);
+    private static final Font FONT_ETIQUETA = new Font("SansSerif", Font.PLAIN, 14);
+
+    // Componentes de la Interfaz
+    private final JTextField txtNombreEquino;
+    private final JTextField txtIdCaballo; // Código del Caballo
+    private final JComboBox<String> cmbEdadEquino;
+    private final JComboBox<String> cmbEstadoSalud;
+    private final JTable tablaDietas;
+    private final DefaultTableModel modeloTabla;
+    private final JButton btnGuardarDieta;
+    private final JButton btnMisCaballos;
+    private final JButton btnCerrarSesion;
+    
+    // Etiqueta para el título dinámico de la dieta
+    private final JLabel lblTituloDieta; 
+
+    // Dependencias de Conexión y Lógica
+    private final Connection conexion;
+    private final int idDueno;
+    private final Gestion_cabalo gestion; // Instancia de la lógica de negocio
+
+    public Pantalla(Connection con, int idDueno) {
+        this.conexion = con;
+        this.idDueno = idDueno;
+        this.gestion = new Gestion_cabalo(con); 
+
+        // --- Configuración básica de la ventana ---
+        setTitle("Gestión de Dietas para Equinos (Dueño ID: " + idDueno + ")");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(950, 600); 
+        setLayout(new BorderLayout(15, 15)); 
+        setLocationRelativeTo(null);
+        getContentPane().setBackground(COLOR_FONDO); 
+
+        // --- Título de la Aplicación (Norte) ---
+        JLabel lblTituloApp = new JLabel("Sistema de Gestión de Dietas Equinas", JLabel.CENTER);
+        lblTituloApp.setFont(new Font("Serif", Font.BOLD, 28));
+        lblTituloApp.setForeground(COLOR_PANEL);
+        add(lblTituloApp, BorderLayout.NORTH);
+
+        // --- 1. Panel Superior (Campos de Entrada) ---
+        JPanel panelSuperior = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 15));
+        panelSuperior.setBackground(COLOR_FONDO);
+        panelSuperior.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); 
+        
+        // Estilización de Etiquetas y Campos
+        JLabel lblNombre = new JLabel("Nombre del Equino:");
+        lblNombre.setFont(FONT_ETIQUETA);
+        txtNombreEquino = new JTextField(15);
+        txtNombreEquino.setFont(FONT_ETIQUETA);
+
+        JLabel lblId = new JLabel("Código Caballo:");
+        lblId.setFont(FONT_ETIQUETA);
+        txtIdCaballo = new JTextField(10); 
+        txtIdCaballo.setFont(FONT_ETIQUETA);
+
+        panelSuperior.add(lblNombre);
+        panelSuperior.add(txtNombreEquino);
+        panelSuperior.add(lblId);
+        panelSuperior.add(txtIdCaballo);
+
+        add(panelSuperior, BorderLayout.NORTH);
+
+        // --- 2. Panel Central (Tabla y Controles Laterales) ---
+        JPanel panelCentral = new JPanel(new BorderLayout(15, 15));
+        panelCentral.setBackground(COLOR_FONDO);
+        
+        // Título Dinámico
+        lblTituloDieta = new JLabel("Dieta Sugerida (Aún sin caballo registrado)", JLabel.CENTER);
+        lblTituloDieta.setHorizontalAlignment(SwingConstants.CENTER);
+        lblTituloDieta.setFont(FONT_TITULO);
+        lblTituloDieta.setForeground(COLOR_PANEL);
+        
+        // ** 2b. Tabla de Dietas **
+        String[] columnas = {"Alimento", "Característica", "Cantidad"}; 
+
+        modeloTabla = new DefaultTableModel(columnas, 0) {
+             @Override
+             public boolean isCellEditable(int row, int column) {
+                 return false;
+             }
+        };
+        tablaDietas = new JTable(modeloTabla);
+        
+        // Estilo de la tabla
+        tablaDietas.getTableHeader().setBackground(COLOR_PANEL.darker());
+        tablaDietas.getTableHeader().setForeground(COLOR_TEXTO);
+        tablaDietas.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        tablaDietas.setGridColor(COLOR_PANEL.brighter());
+        tablaDietas.setRowHeight(25);
+
+        JScrollPane scrollTabla = new JScrollPane(tablaDietas);
+        scrollTabla.setBorder(BorderFactory.createEmptyBorder()); 
+        
+        // Creamos un panel para el título dinámico y la tabla
+        JPanel panelDieta = new JPanel(new BorderLayout());
+        panelDieta.setBackground(COLOR_FONDO);
+        panelDieta.setBorder(BorderFactory.createLineBorder(COLOR_PANEL.brighter(), 1)); 
+        panelDieta.add(lblTituloDieta, BorderLayout.NORTH); 
+        panelDieta.add(scrollTabla, BorderLayout.CENTER); 
+
+        panelCentral.add(panelDieta, BorderLayout.CENTER);
+
+        // ** 2c. Panel Lateral Derecho (Edad y Salud) **
+        JPanel panelLateralDerecho = new JPanel();
+        panelLateralDerecho.setLayout(new BoxLayout(panelLateralDerecho, BoxLayout.Y_AXIS));
+        panelLateralDerecho.setBackground(COLOR_FONDO);
+        panelLateralDerecho.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // Edad del equino
+        JLabel lblEdad = new JLabel("Edad del equino");
+        lblEdad.setFont(FONT_ETIQUETA);
+        panelLateralDerecho.add(lblEdad);
+        String[] edades = {"Potro joven: 1 - 2 años", "Adolescente: 2-4 años", "Mayor: 4-15 años"};
+        cmbEdadEquino = new JComboBox<>(edades);
+        cmbEdadEquino.setFont(FONT_ETIQUETA);
+        cmbEdadEquino.setMaximumSize(new Dimension(220, 30));
+        panelLateralDerecho.add(cmbEdadEquino);
+        
+        panelLateralDerecho.add(Box.createVerticalStrut(30));
+        
+        // Estado de salud (Afeccion)
+        JLabel lblSalud = new JLabel("Estado de salud (Afección)");
+        lblSalud.setFont(FONT_ETIQUETA);
+        panelLateralDerecho.add(lblSalud);
+        String[] estados = {"Salud optima", "Deshidratacion", "Desnutricion", "Parasitos"};
+        cmbEstadoSalud = new JComboBox<>(estados);
+        cmbEstadoSalud.setFont(FONT_ETIQUETA);
+        cmbEstadoSalud.setMaximumSize(new Dimension(220, 30));
+        panelLateralDerecho.add(cmbEstadoSalud);
+        
+        // --- INICIO DE LA MODIFICACIÓN: Añadir la imagen ---
+        panelLateralDerecho.add(Box.createVerticalStrut(20));
+        
+        // Carga y escala la imagen
+        try {
+            // ❗ RUTA CORREGIDA: Se agregaron las comillas dobles y se usaron barras diagonales.
+            String rutaAbsoluta = "C:/Users/ACER/Downloads/png-transparent-arabian-horse-stallion-euclidean-illustration-white-horse-and-black-horse-horse-animals-fictional-character.png"; 
+            
+            ImageIcon originalIcon = new ImageIcon(rutaAbsoluta); 
+            Image originalImage = originalIcon.getImage();
+            
+            // Redimensionar la imagen a un tamaño apropiado (ej: 200x150)
+            Image scaledImage = originalImage.getScaledInstance(200, 150, Image.SCALE_SMOOTH);
+            ImageIcon scaledIcon = new ImageIcon(scaledImage);
+            
+            JLabel lblImagen = new JLabel(scaledIcon);
+            lblImagen.setAlignmentX(Component.CENTER_ALIGNMENT); 
+            lblImagen.setBorder(BorderFactory.createLineBorder(COLOR_PANEL, 3)); 
+            
+            panelLateralDerecho.add(lblImagen);
+        } catch (Exception e) {
+            // Mensaje de error si la imagen no se encuentra 
+            JLabel lblError = new JLabel("Error al cargar imagen 🐴");
+            lblError.setAlignmentX(Component.CENTER_ALIGNMENT);
+            panelLateralDerecho.add(lblError);
+        }
+        
+        // --- FIN DE LA MODIFICACIÓN ---
+        
+        panelLateralDerecho.add(Box.createVerticalGlue()); // El 'glue' empuja todo lo anterior hacia arriba
+        
+        panelCentral.add(panelLateralDerecho, BorderLayout.EAST);
+        
+        add(panelCentral, BorderLayout.CENTER);
+
+        // --- 3. Panel Inferior (Botones) ---
+        JPanel panelInferior = new JPanel(new FlowLayout(FlowLayout.CENTER, 30, 15));
+        panelInferior.setBackground(COLOR_FONDO);
+        
+        btnGuardarDieta = new JButton("Guardar y Mostrar Dieta 💾");
+        btnMisCaballos = new JButton("Mis Caballos 🐴");
+        btnCerrarSesion = new JButton("Cerrar Sesión 🚪");
+
+        // Estilo de botones
+        styleButton(btnGuardarDieta);
+        styleButton(btnMisCaballos);
+        styleButton(btnCerrarSesion);
+        
+        panelInferior.add(btnGuardarDieta);
+        panelInferior.add(btnMisCaballos);
+        panelInferior.add(btnCerrarSesion);
+        
+        add(panelInferior, BorderLayout.SOUTH);
+
+        // --- Agregar Listeners ---
+        btnGuardarDieta.addActionListener(e -> guardarCaballo());
+        btnMisCaballos.addActionListener(e -> mostrarRegistro()); 
+        btnCerrarSesion.addActionListener(e -> cerrarSesion());
+    }
+
+    // Método de utilidad para aplicar estilos a los botones
+    private void styleButton(JButton button) {
+        button.setBackground(COLOR_BOTON);
+        button.setForeground(COLOR_TEXTO);
+        button.setFont(FONT_ETIQUETA);
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createLineBorder(COLOR_PANEL, 2));
+        button.setPreferredSize(new Dimension(200, 40));
+    }
+
+    // --- LÓGICA DE NEGOCIO INTEGRADA (Botón Guardar) ---
+    private void guardarCaballo() {
+        String nombre = txtNombreEquino.getText().trim();
+        String codigo = txtIdCaballo.getText().trim();
+        String edad = (String) cmbEdadEquino.getSelectedItem();
+        String afeccion = (String) cmbEstadoSalud.getSelectedItem();
+
+        if (nombre.isEmpty() || codigo.isEmpty() || edad == null || afeccion == null) {
+            JOptionPane.showMessageDialog(this, "Por favor llena todos los campos.");
+            return;
+        }
+
+        // 1. Llamar a la lógica de negocio para guardar (Caballo y Dieta)
+        gestion.guardarCaballoYDietas(idDueno, nombre, codigo, edad, afeccion); 
+        
+        // 2. Buscar el ID del caballo recién creado (para mostrar su dieta)
+        int idCaballoGuardado = gestion.obtenerUltimoCaballoPorCodigo(codigo); 
+        
+        // 3. Mostrar la dieta en la tabla
+        if (idCaballoGuardado != -1) {
+            gestion.mostrarDietasEnTabla(tablaDietas, idCaballoGuardado); 
+            
+            // ACTUALIZAR EL TÍTULO DINÁMICO
+            lblTituloDieta.setText("Dieta Sugerida para: " + nombre + " (ID: " + idCaballoGuardado + ")");
+
+            // Limpiar campos de entrada
+            txtNombreEquino.setText("");
+            txtIdCaballo.setText("");
+            cmbEdadEquino.setSelectedIndex(0);
+            cmbEstadoSalud.setSelectedIndex(0);
         }
     }
+    
+    // --- LÓGICA DE NEGOCIO INTEGRADA (Botón Registro/Mis Caballos) ---
+    private void mostrarRegistro() {
+        // Se asume que RegistroPantalla existe
+        // Aquí se llama a la clase que debe implementar para ver los registros 
+        // Si no existe, este código generará un error de compilación/ejecución
+        // Nota: Asegúrate de que las clases 'RegistroPantalla' y 'Login' existan en tu proyecto.
+        RegistroPantalla registro = new RegistroPantalla(conexion, idDueno); 
+        registro.setVisible(true);
+    }
+    
+    // --- LÓGICA (Botón Cerrar Sesión) ---
+    private void cerrarSesion() {
+        int confirmacion = JOptionPane.showConfirmDialog(this, 
+            "¿Estás seguro que deseas cerrar la sesión?", 
+            "Cerrar Sesión", JOptionPane.YES_NO_OPTION);
 
-    public static void main(String[] args) {
-        // Aquí debes establecer tu conexión real a la base de datos
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new Pantalla ().setVisible(true);
+        if (confirmacion == JOptionPane.YES_OPTION) {
+            this.dispose();
+
+            try {
+                // Se asume que la clase Login existe
+                Login loginWindow = new Login();
+                loginWindow.setVisible(true); 
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(null, "Error al intentar volver al Login: " + e.getMessage());
             }
-        });
-}
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
-     
-    @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
-    private void initComponents() {
-
-        txt_nombre_usuario = new javax.swing.JTextField();
-        jLabel_Dueño = new javax.swing.JLabel();
-        txt_cedula_usuario = new javax.swing.JTextField();
-        jLabel_Cedula = new javax.swing.JLabel();
-        txt_nombre_caballo = new javax.swing.JTextField();
-        jLabel_Caballo = new javax.swing.JLabel();
-        jLabel_Edad = new javax.swing.JLabel();
-        jLabel_Afeccion = new javax.swing.JLabel();
-        btn_eliminar_caballo = new javax.swing.JButton();
-        btn_guardar_dieta = new javax.swing.JButton();
-        btn_mostra_guardado = new javax.swing.JButton();
-        jLabel_Titulo = new javax.swing.JLabel();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        tbl_dieta = new javax.swing.JTable();
-        txt_codigo_cabalo = new javax.swing.JTextField();
-        idcaballojLabel1 = new javax.swing.JLabel();
-        jComboBox1 = new javax.swing.JComboBox<>();
-        jComboBox2 = new javax.swing.JComboBox<>();
-
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Dietas para Equinos");
-        setMaximizedBounds(new java.awt.Rectangle(0, 0, 809, 500));
-        setMaximumSize(new java.awt.Dimension(809, 500));
-        setMinimumSize(new java.awt.Dimension(931, 553));
-        getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
-
-        txt_nombre_usuario.setHorizontalAlignment(javax.swing.JTextField.LEFT);
-        txt_nombre_usuario.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txt_nombre_usuarioActionPerformed(evt);
-            }
-        });
-        getContentPane().add(txt_nombre_usuario, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 70, 220, 30));
-
-        jLabel_Dueño.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        jLabel_Dueño.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel_Dueño.setText("Nombre del Dueño");
-        getContentPane().add(jLabel_Dueño, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 70, -1, -1));
-
-        txt_cedula_usuario.setCursor(new java.awt.Cursor(java.awt.Cursor.TEXT_CURSOR));
-        txt_cedula_usuario.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txt_cedula_usuarioActionPerformed(evt);
-            }
-        });
-        getContentPane().add(txt_cedula_usuario, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 70, 140, 30));
-
-        jLabel_Cedula.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        jLabel_Cedula.setText("C.C");
-        getContentPane().add(jLabel_Cedula, new org.netbeans.lib.awtextra.AbsoluteConstraints(430, 70, -1, -1));
-
-        txt_nombre_caballo.setHorizontalAlignment(javax.swing.JTextField.LEFT);
-        txt_nombre_caballo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                txt_nombre_caballoActionPerformed(evt);
-            }
-        });
-        getContentPane().add(txt_nombre_caballo, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 130, 220, 30));
-
-        jLabel_Caballo.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        jLabel_Caballo.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        jLabel_Caballo.setText("Nombre del Equino");
-        getContentPane().add(jLabel_Caballo, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 130, -1, -1));
-
-        jLabel_Edad.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        jLabel_Edad.setText("Edad del equino");
-        getContentPane().add(jLabel_Edad, new org.netbeans.lib.awtextra.AbsoluteConstraints(710, 190, -1, -1));
-
-        jLabel_Afeccion.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        jLabel_Afeccion.setText("Estado de salud");
-        getContentPane().add(jLabel_Afeccion, new org.netbeans.lib.awtextra.AbsoluteConstraints(710, 270, -1, -1));
-
-        btn_eliminar_caballo.setText("Eliminar caballo");
-        btn_eliminar_caballo.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btn_eliminar_caballoActionPerformed(evt);
-            }
-        });
-        getContentPane().add(btn_eliminar_caballo, new org.netbeans.lib.awtextra.AbsoluteConstraints(280, 480, -1, -1));
-
-        btn_guardar_dieta.setText("Guardar y mostrar dietas");
-        btn_guardar_dieta.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btn_guardar_dietaActionPerformed(evt);
-            }
-        });
-        getContentPane().add(btn_guardar_dieta, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 480, -1, -1));
-
-        btn_mostra_guardado.setText("Registro");
-        btn_mostra_guardado.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btn_mostra_guardadoActionPerformed(evt);
-            }
-        });
-        getContentPane().add(btn_mostra_guardado, new org.netbeans.lib.awtextra.AbsoluteConstraints(190, 480, -1, -1));
-
-        jLabel_Titulo.setBackground(new java.awt.Color(51, 255, 0));
-        jLabel_Titulo.setFont(new java.awt.Font("Sitka Subheading", 1, 18)); // NOI18N
-        jLabel_Titulo.setText("DIETAS PRA EQUINOS");
-        getContentPane().add(jLabel_Titulo, new org.netbeans.lib.awtextra.AbsoluteConstraints(300, 10, -1, -1));
-
-        tbl_dieta.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null},
-                {null, null, null, null, null, null, null}
-            },
-            new String [] {
-                "C.C", "Dueño", "Id Equino", "Equino", "Alimento", "Caracteristica", "Cantidad"
-            }
-        ) {
-            Class[] types = new Class [] {
-                java.lang.Object.class, java.lang.String.class, java.lang.Integer.class, java.lang.String.class, java.lang.String.class, java.lang.Integer.class, java.lang.String.class
-            };
-            boolean[] canEdit = new boolean [] {
-                false, false, false, false, false, false, true
-            };
-
-            public Class getColumnClass(int columnIndex) {
-                return types [columnIndex];
-            }
-
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return canEdit [columnIndex];
-            }
-        });
-        tbl_dieta.setMinimumSize(new java.awt.Dimension(80, 150));
-        jScrollPane1.setViewportView(tbl_dieta);
-        if (tbl_dieta.getColumnModel().getColumnCount() > 0) {
-            tbl_dieta.getColumnModel().getColumn(4).setPreferredWidth(90);
-            tbl_dieta.getColumnModel().getColumn(5).setPreferredWidth(200);
         }
-
-        getContentPane().add(jScrollPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 180, 650, 280));
-        getContentPane().add(txt_codigo_cabalo, new org.netbeans.lib.awtextra.AbsoluteConstraints(510, 130, 110, 30));
-
-        idcaballojLabel1.setFont(new java.awt.Font("Serif", 1, 18)); // NOI18N
-        idcaballojLabel1.setText("Id Caballo");
-        getContentPane().add(idcaballojLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(420, 130, -1, -1));
-
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Salud optima", "Deshidratacion", "Desnutricion", "Parasitos" }));
-        jComboBox1.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jComboBox1ActionPerformed(evt);
-            }
-        });
-        getContentPane().add(jComboBox1, new org.netbeans.lib.awtextra.AbsoluteConstraints(720, 310, -1, -1));
-
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Potro joven: 1 - 2 años", "Adolecente: 2-4 años", "Mayor: 4-15 años" }));
-        jComboBox2.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jComboBox2ActionPerformed(evt);
-            }
-        });
-        getContentPane().add(jComboBox2, new org.netbeans.lib.awtextra.AbsoluteConstraints(710, 230, -1, -1));
-
-        pack();
-    }// </editor-fold>//GEN-END:initComponents
- ///////////////////////7
-    private void limpiarCampos() {
-        txt_nombre_usuario.setText("");
-        txt_cedula_usuario.setText("");
-        txt_nombre_caballo.setText("");
-        txt_codigo_cabalo.setText("");
-        jComboBox1.setSelectedIndex(0);
-        jComboBox2.setSelectedIndex(0);
     }
-//////////////////////////
-    private void txt_nombre_usuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txt_nombre_usuarioActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txt_nombre_usuarioActionPerformed
-
-    private void txt_cedula_usuarioActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txt_cedula_usuarioActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txt_cedula_usuarioActionPerformed
-
-    private void txt_nombre_caballoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txt_nombre_caballoActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_txt_nombre_caballoActionPerformed
-
-    private void btn_guardar_dietaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_guardar_dietaActionPerformed
-String nombreDueño = txt_nombre_usuario.getText().trim();
-String cedulaDueño = txt_cedula_usuario.getText().trim();
-String nombreCaballo = txt_nombre_caballo.getText().trim();
-String codigoCaballo = txt_codigo_cabalo.getText().trim();
-String edad = (String) jComboBox2.getSelectedItem();
-String afeccion = (String) jComboBox1.getSelectedItem();
-
-if (nombreDueño.isEmpty() || cedulaDueño.isEmpty() || nombreCaballo.isEmpty() || codigoCaballo.isEmpty()
-        || edad == null || edad.isEmpty() || afeccion == null || afeccion.isEmpty()) {
-    JOptionPane.showMessageDialog(this, "Por favor, complete todos los campos y seleccione edad y estado de salud.", "Error",
-    JOptionPane.ERROR_MESSAGE);
-    return;
 }
-
-Gestion_cabalo gestion = new Gestion_cabalo(conexion);
-gestion.guardarCaballoYDietas(nombreDueño, cedulaDueño, nombreCaballo, codigoCaballo, edad, afeccion);
-
-int idCaballo = gestion.obtenerUltimoCaballoPorCodigo(codigoCaballo);
-if (idCaballo != -1) {
-    gestion.mostrarDietasEnTabla(tbl_dieta, idCaballo);
-}
-limpiarCampos();
-    }//GEN-LAST:event_btn_guardar_dietaActionPerformed
-
-    private void btn_mostra_guardadoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_mostra_guardadoActionPerformed
-Gestion_cabalo gestion = new Gestion_cabalo(conexion);
-String[] dueños = gestion.obtenerListaDueños();
-if (dueños.length == 0) {
-    JOptionPane.showMessageDialog(this, "No hay dueños registrados.");
-    return;
-}
-
-String dueñoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione un dueño:", "Dueños",
-                                    JOptionPane.PLAIN_MESSAGE, null, dueños, dueños[0]);
-if (dueñoSeleccionado == null) return;
-String cedulaDueño = dueñoSeleccionado.split(" - ")[0];
-
-String[] caballos = gestion.obtenerListaCaballosPorCedula(cedulaDueño);
-if (caballos.length == 0) {
-    JOptionPane.showMessageDialog(this, "Este dueño no tiene caballos registrados.");
-    return;
-}
-
-String caballoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione un caballo:", "Caballos", 
-                                      JOptionPane.PLAIN_MESSAGE, null, caballos, caballos[0]);
-if (caballoSeleccionado == null) return;
-int idCaballo = Integer.parseInt(caballoSeleccionado.split(" - ")[0]);
-
-gestion.mostrarDietasEnTabla(tbl_dieta, idCaballo);        // TODO add your handling code here:
-    }//GEN-LAST:event_btn_mostra_guardadoActionPerformed
-
-    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
-    
-    }//GEN-LAST:event_jComboBox1ActionPerformed
-
-    private void jComboBox2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox2ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jComboBox2ActionPerformed
-
-    private void btn_eliminar_caballoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btn_eliminar_caballoActionPerformed
-  Gestion_cabalo gestion = new Gestion_cabalo(conexion);
-String[] dueños = gestion.obtenerListaDueños();
-if (dueños.length == 0) {
-    JOptionPane.showMessageDialog(this, "No hay dueños registrados.");
-    return;
-}
-
-String dueñoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione un dueño:", "Eliminar caballo - Dueño",
-                                    JOptionPane.PLAIN_MESSAGE, null, dueños, dueños[0]);
-if (dueñoSeleccionado == null) return;
-String cedulaDueño = dueñoSeleccionado.split(" - ")[0];
-
-String[] caballos = gestion.obtenerListaCaballosPorCedula(cedulaDueño);
-if (caballos.length == 0) {
-    JOptionPane.showMessageDialog(this, "Este dueño no tiene caballos registrados.");
-    return;
-}
-String caballoSeleccionado = (String) JOptionPane.showInputDialog(this, "Seleccione el caballo a eliminar:", "Eliminar caballo", 
-                                      JOptionPane.PLAIN_MESSAGE, null, caballos, caballos[0]);
-if (caballoSeleccionado == null) return;
-int idCaballo = Integer.parseInt(caballoSeleccionado.split(" - ")[0]);
-
-int confirm = JOptionPane.showConfirmDialog(this, "¿Está seguro de eliminar este caballo?", "Confirmación", JOptionPane.YES_NO_OPTION);
-if (confirm == JOptionPane.YES_OPTION) {
-    boolean eliminado = gestion.eliminarCaballoPorId(idCaballo);
-    if (eliminado) {
-        JOptionPane.showMessageDialog(this, "Caballo eliminado correctamente.");
-        ((DefaultTableModel) tbl_dieta.getModel()).setRowCount(0);
-    } else {
-        JOptionPane.showMessageDialog(this, "No se pudo eliminar el caballo.");
-    }
-}        // TODO add your handling code here:private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {
-    }//GEN-LAST:event_btn_eliminar_caballoActionPerformed
-   
-
-
-////////////////////////////////
-    
-    // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton btn_eliminar_caballo;
-    private javax.swing.JButton btn_guardar_dieta;
-    private javax.swing.JButton btn_mostra_guardado;
-    private javax.swing.JLabel idcaballojLabel1;
-    private javax.swing.JComboBox<String> jComboBox1;
-    private javax.swing.JComboBox<String> jComboBox2;
-    private javax.swing.JLabel jLabel_Afeccion;
-    private javax.swing.JLabel jLabel_Caballo;
-    private javax.swing.JLabel jLabel_Cedula;
-    private javax.swing.JLabel jLabel_Dueño;
-    private javax.swing.JLabel jLabel_Edad;
-    private javax.swing.JLabel jLabel_Titulo;
-    private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTable tbl_dieta;
-    private javax.swing.JTextField txt_cedula_usuario;
-    private javax.swing.JTextField txt_codigo_cabalo;
-    private javax.swing.JTextField txt_nombre_caballo;
-    private javax.swing.JTextField txt_nombre_usuario;
-    // End of variables declaration//GEN-END:variables
-}
-
-
-

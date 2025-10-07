@@ -1,35 +1,46 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package Persistencia;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-/**
- *
- * @author carvi
- */
+
 public class ConexionBD {
 
+    private static Connection conexion = null;
 
     public static Connection getConexion() {
-     
-    String connectionUrl = "jdbc:sqlserver://localhost:1433;"
-    + "databaseName=DIETAS_CABALLOS;"
-    + "user=sa;"
-    + "password=12345678;"
-    + "loginTimeout=30;"
-    + "TrustServerCertificate=True;";
-    
-    
-    try{
-    Connection con = DriverManager.getConnection(connectionUrl);
-    return con;
-    }catch(SQLException ex){
-    return null;}
-            
-    
+        String connectionUrl = "jdbc:sqlserver://databaseproyecto.database.windows.net:1433;"
+                + "database=dietasparaequinos;"
+                + "user=adminsql@databaseproyecto;"
+                + "password=hola1234.;"
+                + "encrypt=true;"
+                + "trustServerCertificate=false;"
+                + "hostNameInCertificate=*.database.windows.net;"
+                + "loginTimeout=30;";
+
+        try {
+            if (conexion == null || conexion.isClosed()) {
+                conexion = DriverManager.getConnection(connectionUrl);
+                System.out.println("✅ Conexión abierta a Azure SQL Database");
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al conectar: " + ex.getMessage());
+            conexion = null;
+        }
+        return conexion;
+    }
+
+    public static void cerrarConexion() {
+        try {
+            if (conexion != null && !conexion.isClosed()) {
+                conexion.close();
+                System.out.println("🔒 Conexión cerrada.");
+            }
+        } catch (SQLException ex) {
+            System.err.println("❌ Error al cerrar conexión: " + ex.getMessage());
+        }
     }
 }
+
+
 
