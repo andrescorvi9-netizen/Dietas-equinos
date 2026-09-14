@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/ecomerce/usuario/145b7720-a165-4ac4-93ea-a1a67c3d1564
+method: GET
+order: 2627868152704856

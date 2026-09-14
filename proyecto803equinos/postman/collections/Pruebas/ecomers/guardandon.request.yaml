@@ -1,0 +1,21 @@
+$kind: http-request
+url: http://localhost:8080/api/ecomerce/usuario/guardarusuario
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"nombre\": \"Carlosnovo\",\r
+
+    \  \"correo\": \"andress@gmail.com\",\r
+
+    \  \"clave\": \"3811900\",\r
+
+    \  \"rol\": \"cliente\",\r
+
+    \  \"numeroTelefonico\": \"308254\",\r
+
+    \  \"edad\": 22\r
+
+    }"
+order: 1789234217588

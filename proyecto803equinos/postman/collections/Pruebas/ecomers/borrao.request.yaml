@@ -1,0 +1,4 @@
+$kind: http-request
+url: http://localhost:8080/api/ecomerce/usuario/5a75a733-d579-4de8-8ada-b5d8fc151ed3
+method: DELETE
+order: 4013756145895245

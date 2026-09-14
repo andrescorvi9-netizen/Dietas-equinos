@@ -1,0 +1,23 @@
+$kind: http-request
+url: http://localhost:8080/api/ecomerce/usuario/update
+method: PUT
+body:
+  type: json
+  content: "{\r
+
+    \  \r
+
+    \  \"nombre\": \"Carlos Modificado\",\r
+
+    \  \"correo\": \"carlos_mod@email.com\",\r
+
+    \  \"clave\": \"nuevaClave123\",\r
+
+    \  \"rol\": \"ADMIN\",\r
+
+    \  \"numeroTelefonico\": \"3001234567\",\r
+
+    \  \"edad\": 29\r
+
+    }"
+order: 4042510270268823
